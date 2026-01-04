@@ -1,0 +1,796 @@
+# ============================================================================
+#                         PHASE 2: DATA ACQUISITION
+#                              Deep Dive Guide
+# ============================================================================
+#
+#  "Garbage in, garbage out."
+#
+#  This phase is about understanding your DATA before analyzing it.
+#    - WHERE does it come from?
+#    - Is it ENOUGH? (sample size)
+#    - WHAT does each variable mean?
+#    - What are the LIMITATIONS?
+#
+# ============================================================================
+
+"""
+WHY THIS PHASE MATTERS
+======================
+
+You can't analyze what you don't understand.
+
+Common Phase 2 failures:
+  ❌ "I downloaded the data and started analyzing"
+     → Missed that 30% of values were missing
+  
+  ❌ "I assumed 'PAY_0' meant current payment amount"
+     → Actually it means payment DELAY status (completely different!)
+  
+  ❌ "I built a model on 500 records"
+     → Not enough statistical power to detect real effects
+  
+  ❌ "I treated education as continuous (1, 2, 3, 4)"
+     → It's categorical! The numbers are just labels
+
+What good Phase 2 looks like:
+  ✓ Data source is documented and justified
+  ✓ Sample size is adequate for your goals
+  ✓ Every variable is understood and documented
+  ✓ Data types are correctly identified
+  ✓ Limitations are acknowledged upfront
+"""
+
+# ============================================================================
+# STEP 2.1: IDENTIFY DATA NEEDS
+# ============================================================================
+"""
+THE CORE QUESTION
+-----------------
+"What variables do I NEED to answer my research questions?"
+
+HOW TO THINK THROUGH THIS
+-------------------------
+Go back to your Phase 1 questions and ask: "What data would answer this?"
+
+Example:
+
+  Question: "Is payment delay associated with default?"
+  Data needed: 
+    - Payment delay status (predictor)
+    - Default status (outcome)
+  
+  Question: "Do defaulters have lower credit limits?"
+  Data needed:
+    - Credit limit (predictor)
+    - Default status (outcome)
+  
+  Question: "Can we predict who will default?"
+  Data needed:
+    - Default status (target variable)
+    - Multiple predictors (demographics, payment history, etc.)
+
+THE VARIABLE CHECKLIST
+----------------------
+For any prediction/classification problem, you need:
+
+1. TARGET VARIABLE (what you're predicting)
+   - Must be clearly defined
+   - Must be available in the data
+   - Must have enough cases in each class
+
+2. PREDICTOR VARIABLES (what you're using to predict)
+   - Demographic: age, sex, education, etc.
+   - Financial: income, credit limit, debt, etc.
+   - Behavioral: payment history, usage patterns, etc.
+   - Temporal: time-based patterns, trends
+
+3. IDENTIFIER VARIABLES (for tracking)
+   - Customer ID, account number, etc.
+   - Not used in modeling, just for reference
+
+WHAT DO YOU WISH YOU HAD vs. WHAT DO YOU ACTUALLY HAVE?
+-------------------------------------------------------
+This is crucial. Make two lists:
+
+WISH LIST (ideal data):          REALITY (what's available):
+├── Income                       ├── ❌ Not available
+├── Employment status            ├── ❌ Not available
+├── Other debts                  ├── ❌ Not available
+├── Credit score                 ├── ❌ Not available
+├── Payment history              ├── ✓ PAY_0 to PAY_6
+├── Credit limit                 ├── ✓ LIMIT_BAL
+├── Demographics                 ├── ✓ Age, Sex, Education, Marriage
+├── Bill amounts                 ├── ✓ BILL_AMT1 to BILL_AMT6
+├── Payment amounts              ├── ✓ PAY_AMT1 to PAY_AMT6
+└── Default status               └── ✓ default.payment.next.month
+
+The GAP between wish list and reality = your LIMITATIONS.
+Document this now, so you're not surprised later.
+"""
+
+# ----------------------------------------------------------------------------
+# EXERCISE 2.1: Map Your Data Needs
+# ----------------------------------------------------------------------------
+"""
+For each of your Phase 1 research questions, identify the data needed:
+
+┌─────────────────────────────────────┬─────────────────────────────────────┐
+│ Research Question                   │ Data Needed                         │
+├─────────────────────────────────────┼─────────────────────────────────────┤
+│                                     │                                     │
+│                                     │                                     │
+├─────────────────────────────────────┼─────────────────────────────────────┤
+│                                     │                                     │
+│                                     │                                     │
+├─────────────────────────────────────┼─────────────────────────────────────┤
+│                                     │                                     │
+│                                     │                                     │
+├─────────────────────────────────────┼─────────────────────────────────────┤
+│                                     │                                     │
+│                                     │                                     │
+└─────────────────────────────────────┴─────────────────────────────────────┘
+
+Then check: Is this data available in the Taiwan Credit Card dataset?
+"""
+
+# ============================================================================
+# STEP 2.2: SELECT AND EVALUATE DATA SOURCE
+# ============================================================================
+"""
+THE CORE QUESTION
+-----------------
+"Where does this data come from, and can I trust it?"
+
+QUESTIONS TO ASK ABOUT ANY DATA SOURCE
+--------------------------------------
+
+1. WHO collected it?
+   - Reputable source? (UCI ML Repository, government, academic)
+   - Known biases or agenda?
+   
+2. WHEN was it collected?
+   - Is it recent enough to be relevant?
+   - Has the world changed since then?
+   
+3. HOW was it collected?
+   - Survey? Administrative records? Sensors?
+   - What's the methodology?
+   
+4. WHY was it collected?
+   - Original purpose?
+   - Does that purpose align with yours?
+   
+5. WHAT population does it represent?
+   - Who's included? Who's excluded?
+   - Can you generalize from this sample?
+
+FOR THE TAIWAN CREDIT CARD DATASET
+----------------------------------
+Apply these questions yourself:
+
+WHO: _______________________________________________
+
+WHEN: ______________________________________________
+
+HOW: _______________________________________________
+
+WHY: _______________________________________________
+
+WHAT POPULATION: ____________________________________
+
+POTENTIAL BIASES/LIMITATIONS: ________________________
+
+___________________________________________________
+
+HINT: The UCI page and original paper have this information.
+      Research it. Don't just guess.
+"""
+
+# ============================================================================
+# STEP 2.3: EVALUATE SAMPLE SIZE
+# ============================================================================
+"""
+THE CORE QUESTION
+-----------------
+"Is my sample large enough to detect real effects?"
+
+WHY SAMPLE SIZE MATTERS
+-----------------------
+Too small → You might miss real effects (low statistical power)
+Too large → Waste of resources, tiny effects become "significant"
+
+THE CONCEPT: STATISTICAL POWER
+------------------------------
+Power = Probability of detecting an effect IF it truly exists
+
+Standard target: 80% power (β = 0.20)
+This means: If there IS a real effect, you'll detect it 80% of the time.
+
+FACTORS THAT AFFECT REQUIRED SAMPLE SIZE
+----------------------------------------
+1. EFFECT SIZE: How big is the difference you're looking for?
+   - Small effect → Need more data
+   - Large effect → Need less data
+
+2. SIGNIFICANCE LEVEL (α): How strict is your threshold?
+   - α = 0.05 (standard) vs α = 0.01 (stricter)
+   - Stricter → Need more data
+
+3. POWER (1-β): How confident do you want to be?
+   - 80% (standard) vs 90% (more confident)
+   - More confident → Need more data
+
+4. VARIANCE: How spread out is your data?
+   - High variance → Need more data
+   - Low variance → Need less data
+
+THE FORMULAS (Conceptual Understanding)
+---------------------------------------
+You don't need to memorize these, but understand what they mean:
+
+For comparing two proportions (e.g., default rates):
+
+  n = [(Z_α + Z_β)² × (p₁(1-p₁) + p₂(1-p₂))] / (p₁ - p₂)²
+
+  Where:
+  - Z_α = 1.96 for 95% confidence
+  - Z_β = 0.84 for 80% power
+  - p₁, p₂ = the two proportions you're comparing
+  - (p₁ - p₂) = the difference you want to detect
+
+For comparing two means (e.g., credit limits):
+
+  n = 2 × [(Z_α + Z_β)² × σ²] / (μ₁ - μ₂)²
+
+  Where:
+  - σ² = variance
+  - (μ₁ - μ₂) = the difference in means you want to detect
+
+RULES OF THUMB
+--------------
+When you can't do formal power analysis:
+
+For proportions/percentages:
+  - Minimum: 100 per group
+  - Better: 500 per group
+  - Ideal: 1000+ per group
+
+For regression/modeling:
+  - Minimum: 10-20 observations per predictor variable
+  - Better: 50+ per predictor
+  - For rare events: Need even more
+
+For detecting small effects:
+  - Need thousands of observations
+
+EVALUATING THE TAIWAN DATASET (30,000 records)
+----------------------------------------------
+Ask yourself:
+
+1. Total sample size: 30,000
+   - Is this generally adequate? (Yes/No and why)
+
+2. Default cases: ~22% × 30,000 = ~6,600 defaults
+   - Is this enough to model defaults? (Yes/No and why)
+
+3. For subgroup analysis (e.g., by education level):
+   - If 4 education groups, average ~7,500 per group
+   - Smallest group might have ~500
+   - Is this adequate? (Yes/No and why)
+
+4. For logistic regression with ~10 predictors:
+   - Rule of thumb: Need 10-20 events per predictor
+   - 6,600 defaults / 10 predictors = 660 per predictor
+   - Is this adequate? (Yes/No and why)
+
+YOUR ASSESSMENT:
+Is 30,000 records with 22% default rate adequate for your analysis goals?
+
+Answer: ________________________________________________
+
+Justification: __________________________________________
+
+______________________________________________________
+"""
+
+# ============================================================================
+# STEP 2.4: DOCUMENT VARIABLES (Data Dictionary)
+# ============================================================================
+"""
+THE CORE QUESTION
+-----------------
+"What does each variable mean, and what type of data is it?"
+
+WHY THIS MATTERS
+----------------
+If you misunderstand a variable, your entire analysis is wrong.
+
+Classic mistakes:
+  - Treating categorical as continuous (education "1, 2, 3" as numeric scale)
+  - Treating ordinal as nominal (losing the order information)
+  - Missing the meaning of coded values (what does PAY_0 = -2 mean?)
+  - Ignoring units (NT$ vs USD, months vs years)
+
+DATA TYPES: THE FOUNDATION
+--------------------------
+Every variable falls into one of these categories:
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           DATA TYPE HIERARCHY                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  CATEGORICAL (qualitative)          NUMERICAL (quantitative)                │
+│  ├── NOMINAL                        ├── DISCRETE                            │
+│  │   No natural order               │   Countable values                    │
+│  │   Ex: Sex, Color, Country        │   Ex: # of children, # of delays      │
+│  │                                  │                                       │
+│  └── ORDINAL                        └── CONTINUOUS                          │
+│      Has natural order                  Any value in range                  │
+│      Ex: Education level,               Ex: Age, Income, Credit limit       │
+│      Satisfaction rating                                                    │
+│                                                                             │
+│  SPECIAL CASE: BINARY                                                       │
+│  Only two categories                                                        │
+│  Ex: Yes/No, Male/Female, Default/No Default                                │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+WHY DATA TYPE MATTERS FOR ANALYSIS
+----------------------------------
+Different data types → Different statistical methods
+
+┌──────────────┬──────────────────────────────────────────────────────────────┐
+│ Data Type    │ Appropriate Methods                                          │
+├──────────────┼──────────────────────────────────────────────────────────────┤
+│ Nominal      │ Frequencies, mode, chi-square test, bar charts               │
+├──────────────┼──────────────────────────────────────────────────────────────┤
+│ Ordinal      │ Median, percentiles, Mann-Whitney, Spearman correlation      │
+├──────────────┼──────────────────────────────────────────────────────────────┤
+│ Continuous   │ Mean, std dev, t-test, Pearson correlation, histograms       │
+├──────────────┼──────────────────────────────────────────────────────────────┤
+│ Binary       │ Proportions, z-test, logistic regression                     │
+└──────────────┴──────────────────────────────────────────────────────────────┘
+
+BUILDING YOUR DATA DICTIONARY
+-----------------------------
+For EACH variable, document:
+
+1. NAME: What's it called?
+2. DESCRIPTION: What does it represent (in plain English)?
+3. DATA TYPE: Nominal / Ordinal / Discrete / Continuous / Binary
+4. VALUES: What values can it take? What do codes mean?
+5. RANGE: Min to Max (for numerical)
+6. MISSING: Are there missing values? How are they coded?
+7. ISSUES: Anything weird or concerning?
+8. ROLE: Predictor, target, or identifier?
+"""
+
+# ----------------------------------------------------------------------------
+# EXERCISE 2.4: Build Your Data Dictionary
+# ----------------------------------------------------------------------------
+"""
+For the Taiwan Credit Card dataset, document each variable.
+DO NOT copy from UCI. Look at the actual data and figure it out.
+
+I'll give you the structure. You fill in the details.
+
+VARIABLE: ID
+├── Description: ___________________________________
+├── Data Type: ____________________________________
+├── Values/Range: _________________________________
+├── Role: ________________________________________
+└── Issues: ______________________________________
+
+VARIABLE: LIMIT_BAL
+├── Description: ___________________________________
+├── Data Type: ____________________________________
+├── Values/Range: _________________________________
+├── Role: ________________________________________
+└── Issues: ______________________________________
+
+VARIABLE: SEX
+├── Description: ___________________________________
+├── Data Type: ____________________________________
+├── Values: 1 = _______, 2 = _______
+├── Role: ________________________________________
+└── Issues: ______________________________________
+
+VARIABLE: EDUCATION
+├── Description: ___________________________________
+├── Data Type: ____________________________________
+├── Values: 1 = _______, 2 = _______, 3 = _______, 4 = _______
+├── Role: ________________________________________
+└── Issues: (Hint: Are there values not in the dictionary?)
+    ________________________________________________
+
+VARIABLE: MARRIAGE
+├── Description: ___________________________________
+├── Data Type: ____________________________________
+├── Values: 1 = _______, 2 = _______, 3 = _______
+├── Role: ________________________________________
+└── Issues: (Hint: Are there values not in the dictionary?)
+    ________________________________________________
+
+VARIABLE: AGE
+├── Description: ___________________________________
+├── Data Type: ____________________________________
+├── Values/Range: _________________________________
+├── Role: ________________________________________
+└── Issues: ______________________________________
+
+VARIABLE: PAY_0 (also PAY_2 through PAY_6)
+├── Description: ___________________________________
+├── Data Type: ____________________________________
+├── Values: 
+│   -2 = _______________________________________
+│   -1 = _______________________________________
+│    0 = _______________________________________
+│    1 = _______________________________________
+│    2 = _______________________________________
+│   (etc.)
+├── Role: ________________________________________
+└── Issues: (Hint: This is confusing. Make sure you understand it!)
+    ________________________________________________
+
+VARIABLE: BILL_AMT1 (also BILL_AMT2 through BILL_AMT6)
+├── Description: ___________________________________
+├── Data Type: ____________________________________
+├── Values/Range: _________________________________
+├── Units: _______________________________________
+├── Role: ________________________________________
+└── Issues: (Hint: Can these be negative? What would that mean?)
+    ________________________________________________
+
+VARIABLE: PAY_AMT1 (also PAY_AMT2 through PAY_AMT6)
+├── Description: ___________________________________
+├── Data Type: ____________________________________
+├── Values/Range: _________________________________
+├── Units: _______________________________________
+├── Role: ________________________________________
+└── Issues: ______________________________________
+
+VARIABLE: default.payment.next.month
+├── Description: ___________________________________
+├── Data Type: ____________________________________
+├── Values: 0 = _______, 1 = _______
+├── Role: ________________________________________
+└── Issues: ______________________________________
+
+
+CRITICAL THINKING QUESTIONS:
+
+1. Which variables are CATEGORICAL? Which are CONTINUOUS?
+
+   Categorical: _____________________________________
+   
+   Continuous: _____________________________________
+
+2. Which variable is your TARGET (what you're predicting)?
+
+   Target: _________________________________________
+
+3. Which variables are IDENTIFIERS (not for modeling)?
+
+   Identifiers: ____________________________________
+
+4. Are there any variables that SHOULD BE ordinal but might be
+   mistakenly treated as continuous?
+   
+   Answer: _________________________________________
+
+5. PAY_0 to PAY_6: Are these better treated as:
+   a) Continuous (delay in months)
+   b) Ordinal (ordered categories)
+   c) Nominal (unordered categories)
+   d) Could bin into groups (e.g., "on time" vs "delayed")
+   
+   Your choice and why: _____________________________
+   
+   ________________________________________________
+"""
+
+# ============================================================================
+# STEP 2.5: UNDERSTAND VARIABLE RELATIONSHIPS (Conceptual)
+# ============================================================================
+"""
+THE CORE QUESTION
+-----------------
+"How might these variables relate to each other and to the target?"
+
+WHY THINK ABOUT THIS BEFORE ANALYSIS?
+-------------------------------------
+1. Generates hypotheses to test
+2. Helps you spot unexpected findings
+3. Warns you about potential multicollinearity
+4. Guides feature engineering
+
+EXPECTED RELATIONSHIPS
+----------------------
+Before looking at the data, predict:
+
+RELATIONSHIP WITH DEFAULT (target):
+Think: Which variables do you EXPECT to predict default?
+
+Variable        Expected Relationship    Your Reasoning
+─────────────────────────────────────────────────────────────────
+LIMIT_BAL       ___________________     _________________________
+AGE             ___________________     _________________________
+SEX             ___________________     _________________________
+EDUCATION       ___________________     _________________________
+MARRIAGE        ___________________     _________________________
+PAY_0           ___________________     _________________________
+BILL_AMT1       ___________________     _________________________
+PAY_AMT1        ___________________     _________________________
+
+Fill in with: 
+  "Higher → More default" 
+  "Higher → Less default"
+  "No relationship expected"
+  "Unclear"
+
+RELATIONSHIPS BETWEEN PREDICTORS:
+Think: Which variables might be correlated with EACH OTHER?
+
+Expected correlations:
+  - BILL_AMT1 and BILL_AMT2? _______ (probably high - same person's bills)
+  - PAY_0 and PAY_2? _______ (probably high - payment behavior persists)
+  - AGE and LIMIT_BAL? _______ (older people might have higher limits?)
+  - EDUCATION and LIMIT_BAL? _______ (more education → higher income → higher limit?)
+  - BILL_AMT1 and PAY_AMT1? _______ (people who owe more might pay more?)
+
+WHY THIS MATTERS:
+  - High correlation between predictors = multicollinearity
+  - Multicollinearity makes coefficient interpretation unreliable
+  - May need to drop or combine correlated features
+"""
+
+# ============================================================================
+# STEP 2.6: LOAD AND VERIFY THE DATA
+# ============================================================================
+"""
+THE CORE QUESTION
+-----------------
+"Does the data match what I expected?"
+
+NOW you can touch the data. But first, VERIFY:
+
+VERIFICATION CHECKLIST
+----------------------
+□ 1. ROW COUNT
+     Expected: ~30,000
+     Actual: _______
+     Match? _______
+
+□ 2. COLUMN COUNT
+     Expected: 25 (ID + 23 predictors + 1 target)
+     Actual: _______
+     Match? _______
+
+□ 3. COLUMN NAMES
+     Do they match the documentation?
+     Any surprises? _______________________
+
+□ 4. DATA TYPES
+     Are numbers stored as numbers?
+     Are categories stored correctly?
+     Issues: ____________________________
+
+□ 5. MISSING VALUES
+     How many per column?
+     How are they coded? (NaN, -1, 999, blank?)
+     
+□ 6. DUPLICATE ROWS
+     Any exact duplicates?
+     Any duplicate IDs?
+     
+□ 7. VALUE RANGES
+     Do continuous variables have reasonable ranges?
+     Any impossible values? (negative age, credit limit of 0)
+     
+□ 8. CATEGORY LEVELS
+     Do categorical variables have expected levels?
+     Any unexpected codes? (education = 0, 5, 6?)
+
+□ 9. TARGET DISTRIBUTION
+     What % is each class?
+     Expected: ~22% default
+     Actual: _______
+
+WHAT TO DO WITH ISSUES
+----------------------
+Document everything. Don't fix yet - just note.
+
+Issue Type              Action
+─────────────────────────────────────────────────────
+Missing values          Note count and pattern
+Unexpected codes        Research meaning or flag as unknown
+Duplicates              Flag for removal (if true duplicates)
+Outliers                Flag for investigation (real or error?)
+Type mismatches         Note for conversion
+"""
+
+# ----------------------------------------------------------------------------
+# EXERCISE 2.6: Verify Your Data
+# ----------------------------------------------------------------------------
+"""
+Load the Taiwan Credit Card dataset and verify:
+
+```python
+# Load data
+from ucimlrepo import fetch_ucirepo
+dataset = fetch_ucirepo(id=350)
+df = dataset.data.original
+
+# Now answer these questions by examining df:
+```
+
+1. How many rows? _______
+2. How many columns? _______
+3. Any missing values? _______ (show count per column if any)
+4. Any duplicate rows? _______
+5. What are the unique values in EDUCATION? _______
+6. What are the unique values in MARRIAGE? _______
+7. What is the range of AGE? _______ to _______
+8. What is the range of LIMIT_BAL? _______ to _______
+9. What % defaulted? _______
+10. Any negative values in BILL_AMT columns? _______ (What might this mean?)
+
+ISSUES FOUND:
+1. ________________________________________________
+2. ________________________________________________
+3. ________________________________________________
+"""
+
+# ============================================================================
+# PHASE 2 DELIVERABLE: DATA ACQUISITION DOCUMENT
+# ============================================================================
+"""
+Compile your Phase 2 work into a formal document.
+
+TEMPLATE:
+
+═══════════════════════════════════════════════════════════════════════════════
+                        DATA ACQUISITION DOCUMENT
+                    Taiwan Credit Card Default Analysis
+═══════════════════════════════════════════════════════════════════════════════
+
+1. DATA SOURCE
+--------------
+Source: 
+URL:
+Original collector:
+Time period:
+Geographic scope:
+Original purpose:
+
+
+2. SAMPLE SIZE ASSESSMENT
+-------------------------
+Total records:
+Target variable distribution:
+Assessment of adequacy:
+Justification:
+
+
+3. DATA DICTIONARY
+------------------
+[Include your completed data dictionary from Exercise 2.4]
+
+| Variable | Description | Type | Values/Range | Role | Issues |
+|----------|-------------|------|--------------|------|--------|
+|          |             |      |              |      |        |
+|          |             |      |              |      |        |
+(complete for all variables)
+
+
+4. EXPECTED RELATIONSHIPS
+-------------------------
+Variables expected to predict default (and why):
+-
+-
+-
+
+Variables expected to be correlated with each other:
+-
+-
+
+
+5. DATA QUALITY ISSUES
+----------------------
+[From Exercise 2.6]
+
+Issue 1:
+Issue 2:
+Issue 3:
+
+
+6. LIMITATIONS
+--------------
+What data is MISSING that you wish you had:
+-
+-
+
+Generalizability concerns:
+-
+-
+
+Other limitations:
+-
+
+═══════════════════════════════════════════════════════════════════════════════
+"""
+
+# ============================================================================
+# KEY CONCEPTS SUMMARY
+# ============================================================================
+"""
+PHASE 2 KEY TAKEAWAYS:
+
+1. KNOW YOUR DATA SOURCE
+   - Who, when, why, how
+   - Can you trust it?
+
+2. SAMPLE SIZE MATTERS
+   - Need enough to detect effects
+   - Rule of thumb: 10-20 events per predictor for modeling
+
+3. DATA TYPES DETERMINE METHODS
+   - Categorical → Chi-square, frequencies
+   - Continuous → t-tests, correlations
+   - Wrong type = wrong analysis
+
+4. BUILD YOUR OWN DATA DICTIONARY
+   - Don't trust documentation blindly
+   - Look at actual values
+   - Document issues
+
+5. VERIFY BEFORE ANALYZING
+   - Check row/column counts
+   - Check for missing values
+   - Check for weird values
+   - Check target distribution
+
+6. LIMITATIONS ARE NOT FAILURES
+   - Every dataset has limitations
+   - Acknowledging them makes your analysis stronger
+   - Hiding them makes your analysis suspect
+"""
+
+# ============================================================================
+# YOUR ACTION ITEMS
+# ============================================================================
+"""
+PHASE 2 CHECKLIST:
+
+[ ] 1. Map data needs to research questions (Exercise 2.1)
+
+[ ] 2. Research and document data source (Step 2.2)
+       - Who, when, why, how collected
+       - Potential biases
+
+[ ] 3. Assess sample size adequacy (Step 2.3)
+       - Is 30,000 enough?
+       - Is 22% default rate workable?
+       - Justify your answer
+
+[ ] 4. Build complete data dictionary (Exercise 2.4)
+       - Every variable documented
+       - Data types identified
+       - Issues noted
+
+[ ] 5. Predict expected relationships (Step 2.5)
+       - Which variables should predict default?
+       - Which variables might be correlated?
+
+[ ] 6. Load and verify data (Exercise 2.6)
+       - Confirm row/column counts
+       - Check for issues
+       - Document findings
+
+[ ] 7. Compile Data Acquisition Document
+       - Use the template above
+
+WHEN YOU'RE DONE:
+Share your Data Acquisition Document with me, and I'll give feedback
+before we move to Phase 3: Exploratory Data Analysis.
+"""

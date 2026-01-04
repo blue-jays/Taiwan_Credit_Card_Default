@@ -1,0 +1,869 @@
+# ============================================================================
+#                         PHASE 1: PROBLEM DEFINITION
+#                              Deep Dive Guide
+# ============================================================================
+#
+#  "A problem well-defined is a problem half-solved."
+#
+#  This phase is about CLARITY. Before any analysis, you must know:
+#    - WHO cares about this problem?
+#    - WHAT questions are we answering?
+#    - HOW will we know if we succeeded?
+#    - WHAT decisions will this analysis inform?
+#
+# ============================================================================
+
+"""
+WHY THIS PHASE MATTERS
+======================
+
+Most failed analyses fail HERE, not in the statistics.
+
+Common Phase 1 failures:
+  ❌ "I'll just explore the data and see what I find"
+     → Leads to aimless wandering, no actionable insights
+  
+  ❌ "The stakeholder said they want to reduce defaults"
+     → Too vague. Reduce by how much? For which customers? At what cost?
+  
+  ❌ "I'll build the best model I can"
+     → Best by what metric? Who will use it? How will it be deployed?
+
+What good Phase 1 looks like:
+  ✓ Clear stakeholders with defined concerns
+  ✓ Specific, answerable questions
+  ✓ Success criteria you can measure
+  ✓ Decisions that will be made based on findings
+"""
+
+# ============================================================================
+# STEP 1.1: IDENTIFY STAKEHOLDERS
+# ============================================================================
+"""
+WHAT IS A STAKEHOLDER?
+----------------------
+Anyone who:
+  - Has the problem you're solving
+  - Will use your findings
+  - Will make decisions based on your analysis
+  - Is affected by those decisions
+  - Needs to approve or validate your work
+
+WHY IDENTIFY THEM?
+------------------
+Different stakeholders care about different things:
+
+  - CFO cares about: "How much money will we lose?"
+  - Risk Manager cares about: "Which customers are risky?"
+  - Marketing cares about: "Who should we target/avoid?"
+  - Collections cares about: "Who should we call first?"
+  - Compliance cares about: "Is this model fair and explainable?"
+  - IT cares about: "Can we actually deploy this?"
+
+Your analysis must speak to YOUR stakeholder's concerns.
+
+HOW TO THINK THROUGH THIS:
+--------------------------
+Ask yourself these questions:
+
+1. WHO has the problem?
+   "Who is losing sleep over credit card defaults?"
+   → The Risk Manager, the CFO, the Board
+
+2. WHO will read my analysis?
+   "Who will actually look at my report/dashboard?"
+   → Risk Manager (primary), maybe executives (summary only)
+
+3. WHO will make decisions?
+   "Who has the authority to change lending policy?"
+   → Risk Manager recommends, Credit Committee approves
+
+4. WHO is affected by those decisions?
+   "If we tighten lending, who feels the impact?"
+   → Customers (denied credit), Sales (fewer loans), Bank (less risk but less revenue)
+
+5. WHO needs to trust my work?
+   "Who needs to validate my methodology?"
+   → Compliance, Model Validation team, Auditors
+"""
+
+# ----------------------------------------------------------------------------
+# EXERCISE 1.1: Map Your Stakeholders
+# ----------------------------------------------------------------------------
+"""
+For the Taiwan Credit Card Default analysis, fill in this table:
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ STAKEHOLDER MAPPING                                                         │
+├─────────────────┬───────────────────────┬───────────────────────────────────┤
+│ Stakeholder     │ Their Role            │ What They Care About              │
+├─────────────────┼───────────────────────┼───────────────────────────────────┤
+│ PRIMARY:        │                       │                                   │
+│ (Who MUST see   │                       │                                   │
+│ this analysis?) │                       │                                   │
+├─────────────────┼───────────────────────┼───────────────────────────────────┤
+│                 │                       │                                   │
+├─────────────────┼───────────────────────┼───────────────────────────────────┤
+│ SECONDARY:      │                       │                                   │
+│ (Who would      │                       │                                   │
+│ benefit?)       │                       │                                   │
+├─────────────────┼───────────────────────┼───────────────────────────────────┤
+│                 │                       │                                   │
+│                 │                       │                                   │
+├─────────────────┼───────────────────────┼───────────────────────────────────┤
+│ DECISION MAKER: │                       │                                   │
+│ (Who acts on    │                       │                                   │
+│ findings?)      │                       │                                   │
+├─────────────────┼───────────────────────┼───────────────────────────────────┤
+│                 │                       │                                   │
+└─────────────────┴───────────────────────┴───────────────────────────────────┘
+
+EXAMPLE (filled in):
+
+┌─────────────────┬───────────────────────┬───────────────────────────────────┐
+│ Stakeholder     │ Their Role            │ What They Care About              │
+├─────────────────┼───────────────────────┼───────────────────────────────────┤
+│ PRIMARY:        │                       │                                   │
+│ Credit Risk     │ Manages portfolio     │ - Which customers are risky?      │
+│ Manager         │ risk, sets policy     │ - What's driving defaults?        │
+│                 │                       │ - Can we predict default?         │
+│                 │                       │ - What policy changes help?       │
+├─────────────────┼───────────────────────┼───────────────────────────────────┤
+│ SECONDARY:      │                       │                                   │
+│ Collections     │ Recovers unpaid       │ - Who should we call first?       │
+│ Team            │ debts                 │ - Which accounts are hopeless?    │
+├─────────────────┼───────────────────────┼───────────────────────────────────┤
+│ Finance/CFO     │ Manages bank's        │ - How much will we lose?          │
+│                 │ finances              │ - What's the $ impact of changes? │
+├─────────────────┼───────────────────────┼───────────────────────────────────┤
+│ Compliance      │ Ensures regulatory    │ - Is the model fair?              │
+│                 │ compliance            │ - Can we explain decisions?       │
+├─────────────────┼───────────────────────┼───────────────────────────────────┤
+│ DECISION MAKER: │                       │                                   │
+│ Credit          │ Approves policy       │ - Is evidence strong enough?      │
+│ Committee       │ changes               │ - What's the risk/reward?         │
+└─────────────────┴───────────────────────┴───────────────────────────────────┘
+
+YOUR TURN: Create your stakeholder map. Who are you analyzing for?
+"""
+
+# ============================================================================
+# STEP 1.2: FRAME BUSINESS QUESTIONS
+# ============================================================================
+"""
+THE CORE SKILL
+--------------
+Converting vague concerns into specific, answerable questions.
+
+VAGUE: "We want to understand defaults"
+  → Understand what about defaults? For what purpose?
+
+SPECIFIC: "What is the default rate for customers with payment delays 
+           vs. those without, and is this difference statistically significant?"
+  → Clear, measurable, testable
+
+THE FOUR TYPES OF QUESTIONS
+---------------------------
+Every analytical question falls into one of four categories.
+You need questions from EACH category for a complete analysis.
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        THE ANALYTICS PROGRESSION                            │
+├─────────────┬─────────────┬─────────────┬─────────────────────────────────────┤
+│ DESCRIPTIVE │ DIAGNOSTIC  │ PREDICTIVE  │ PRESCRIPTIVE                       │
+│ "What is?"  │ "Why?"      │ "What will?"│ "What should?"                     │
+├─────────────┼─────────────┼─────────────┼─────────────────────────────────────┤
+│ Measures    │ Explains    │ Forecasts   │ Recommends                         │
+│ the past    │ the past    │ the future  │ action                             │
+├─────────────┼─────────────┼─────────────┼─────────────────────────────────────┤
+│ Easiest     │             │             │ Hardest                            │
+│ ←───────────┴─────────────┴─────────────┴───────────────────────────────────→│
+│ VALUE INCREASES                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+Most people stop at Descriptive. 
+Good analysts reach Prescriptive.
+"""
+
+# ----------------------------------------------------------------------------
+# DESCRIPTIVE QUESTIONS: "What is happening?"
+# ----------------------------------------------------------------------------
+"""
+PURPOSE: Establish the facts. Measure the current state.
+
+CHARACTERISTICS:
+  - Can be answered with counts, percentages, averages
+  - No interpretation or causation
+  - Backward-looking (what happened, what is)
+  - Foundation for all other analysis
+
+HOW TO THINK:
+  "If I had to describe this problem with just numbers, what would I report?"
+  "What are the basic facts someone needs to know?"
+
+QUESTION PATTERNS:
+  - What is the [metric]?
+  - How many [things] are there?
+  - What percentage of [group] has [characteristic]?
+  - What is the distribution of [variable]?
+  - What is the average/median [measure]?
+  - How has [metric] changed over time?
+
+FOR CREDIT CARD DEFAULT - EXAMPLE QUESTIONS:
+
+  1. What is the overall default rate?
+     → "22% of customers defaulted"
+     
+  2. How many customers are in each education category?
+     → "47% university, 35% grad school, 16% high school, 2% other"
+     
+  3. What is the average credit limit?
+     → "NT$167,484 (median: NT$140,000)"
+     
+  4. What is the distribution of payment delays?
+     → "65% never delayed, 20% delayed once, 15% delayed 2+ times"
+     
+  5. What is the default rate by age group?
+     → "Under 30: 25%, 30-50: 21%, Over 50: 19%"
+
+WHAT STATISTICAL METHODS ANSWER THESE?
+  - Counts and frequencies
+  - Means, medians, standard deviations
+  - Percentages and proportions
+  - Histograms, bar charts
+  - Cross-tabulations
+
+YOUR DESCRIPTIVE QUESTIONS:
+Write 3-5 descriptive questions for the Taiwan dataset.
+
+1. _______________________________________________
+
+2. _______________________________________________
+
+3. _______________________________________________
+
+4. _______________________________________________
+
+5. _______________________________________________
+"""
+
+# ----------------------------------------------------------------------------
+# DIAGNOSTIC QUESTIONS: "Why is it happening?"
+# ----------------------------------------------------------------------------
+"""
+PURPOSE: Find explanations. Identify relationships and drivers.
+
+CHARACTERISTICS:
+  - Looks for associations and correlations
+  - Compares groups to find differences
+  - Seeks to explain patterns found in descriptive analysis
+  - Still backward-looking, but interpretive
+
+HOW TO THINK:
+  "Now that I know WHAT is happening, WHY might it be happening?"
+  "What factors are associated with the outcome?"
+  "Are there differences between groups that explain the pattern?"
+
+QUESTION PATTERNS:
+  - Why is [metric] high/low?
+  - What factors are associated with [outcome]?
+  - Is there a relationship between [X] and [Y]?
+  - Do [group A] and [group B] differ on [measure]?
+  - What distinguishes [success] from [failure]?
+  - What drives [behavior]?
+
+FOR CREDIT CARD DEFAULT - EXAMPLE QUESTIONS:
+
+  1. Is payment delay associated with default?
+     → Tests relationship between payment behavior and outcome
+     
+  2. Do defaulters have different credit limits than non-defaulters?
+     → Compares means between two groups
+     
+  3. Is there a relationship between age and default?
+     → Tests correlation or group differences
+     
+  4. Which factor has the strongest association with default?
+     → Ranks predictors by effect size
+     
+  5. Why is the default rate higher for customers with low credit limits?
+     → Investigates a specific pattern
+
+WHAT STATISTICAL METHODS ANSWER THESE?
+  - Correlation analysis (Pearson, Spearman)
+  - Chi-square test (association between categorical variables)
+  - T-tests (comparing means between groups)
+  - ANOVA (comparing means across multiple groups)
+  - Effect sizes (Cramér's V, Cohen's d)
+
+IMPORTANT DISTINCTION:
+  Diagnostic questions find ASSOCIATIONS, not CAUSATION.
+  
+  ✓ "Payment delay is associated with default"
+  ✗ "Payment delay causes default"
+  
+  We can't prove causation with observational data.
+  But associations guide decisions and further investigation.
+
+YOUR DIAGNOSTIC QUESTIONS:
+Write 3-5 diagnostic questions for the Taiwan dataset.
+
+1. _______________________________________________
+
+2. _______________________________________________
+
+3. _______________________________________________
+
+4. _______________________________________________
+
+5. _______________________________________________
+"""
+
+# ----------------------------------------------------------------------------
+# PREDICTIVE QUESTIONS: "What will happen?"
+# ----------------------------------------------------------------------------
+"""
+PURPOSE: Forecast future outcomes. Score or classify new cases.
+
+CHARACTERISTICS:
+  - Forward-looking
+  - Uses patterns from past to predict future
+  - Produces probabilities, scores, or classifications
+  - Requires a model (statistical or machine learning)
+
+HOW TO THINK:
+  "Based on what I've learned, can I predict what will happen?"
+  "If a new customer walks in tomorrow, can I estimate their risk?"
+  "What will happen if current trends continue?"
+
+QUESTION PATTERNS:
+  - Can we predict [outcome]?
+  - What is the probability of [event] for [entity]?
+  - How accurate can our predictions be?
+  - Which customers are most likely to [behavior]?
+  - What will [metric] be next [time period]?
+  - If [condition changes], what will happen to [outcome]?
+
+FOR CREDIT CARD DEFAULT - EXAMPLE QUESTIONS:
+
+  1. Can we predict which customers will default?
+     → Binary classification model
+     
+  2. What is the probability of default for a given customer?
+     → Probability scoring (logistic regression output)
+     
+  3. How accurately can we identify defaulters?
+     → Model performance metrics (AUC, recall, precision)
+     
+  4. Which current customers are at highest risk?
+     → Apply model to score portfolio
+     
+  5. If a customer has 2 payment delays, what's their default probability?
+     → Use model for specific scenarios
+
+WHAT STATISTICAL METHODS ANSWER THESE?
+  - Logistic regression (binary classification)
+  - Decision trees / Random forests
+  - Model evaluation metrics (AUC-ROC, confusion matrix)
+  - Cross-validation
+  - Probability calibration
+
+KEY METRICS FOR PREDICTIVE MODELS:
+  - AUC-ROC: Overall discriminatory power (0.5 = random, 1.0 = perfect)
+  - Recall: Of actual defaults, how many did we catch?
+  - Precision: Of predicted defaults, how many were correct?
+  - KS Statistic: Maximum separation between classes
+
+YOUR PREDICTIVE QUESTIONS:
+Write 2-3 predictive questions for the Taiwan dataset.
+
+1. _______________________________________________
+
+2. _______________________________________________
+
+3. _______________________________________________
+"""
+
+# ----------------------------------------------------------------------------
+# PRESCRIPTIVE QUESTIONS: "What should we do?"
+# ----------------------------------------------------------------------------
+"""
+PURPOSE: Recommend actions. Optimize decisions. Drive change.
+
+CHARACTERISTICS:
+  - Action-oriented
+  - Requires understanding of business context
+  - Translates insights into decisions
+  - Highest value, but hardest to answer
+  - Often involves trade-offs
+
+HOW TO THINK:
+  "So what? What should the business DO with these findings?"
+  "What action would improve the outcome?"
+  "What's the recommendation, and what's the expected impact?"
+
+QUESTION PATTERNS:
+  - What should we do about [problem]?
+  - How should we change [policy/process]?
+  - What is the optimal [threshold/strategy]?
+  - Which [actions] would have the greatest impact?
+  - What is the cost/benefit of [intervention]?
+  - Should we [specific decision]?
+
+FOR CREDIT CARD DEFAULT - EXAMPLE QUESTIONS:
+
+  1. What credit limit policy would reduce defaults?
+     → "Set maximum limit based on risk score"
+     
+  2. Which customers should we target for early intervention?
+     → "Contact customers with 2+ delays immediately"
+     
+  3. Should we reject applicants with certain characteristics?
+     → "Require minimum payment history of 6 months"
+     
+  4. What's the optimal threshold for flagging high-risk customers?
+     → "Flag customers with >40% predicted default probability"
+     
+  5. How should we price credit based on risk?
+     → "Charge higher interest rates for medium-risk segment"
+
+WHAT STATISTICAL METHODS ANSWER THESE?
+  - Threshold optimization (cost-benefit analysis)
+  - Sensitivity analysis
+  - Scenario modeling ("what if" analysis)
+  - A/B testing framework (for implementation)
+  - Expected value calculations
+
+THE PRESCRIPTION FORMULA:
+  For each recommendation, provide:
+  
+  1. WHAT: Specific action to take
+     → "Set minimum credit score requirement of 620"
+     
+  2. WHY: Evidence from your analysis
+     → "Customers below 620 have 45% default rate vs. 15% above"
+     
+  3. EXPECTED IMPACT: Quantified outcome
+     → "Would reduce defaults by 20% (~1,300 customers)"
+     
+  4. TRADE-OFF: What you give up
+     → "Would reject 8% of applicants, reducing loan volume"
+     
+  5. HOW: Implementation steps
+     → "Update application scoring system, train loan officers"
+
+YOUR PRESCRIPTIVE QUESTIONS:
+Write 2-3 prescriptive questions for the Taiwan dataset.
+
+1. _______________________________________________
+
+2. _______________________________________________
+
+3. _______________________________________________
+"""
+
+# ============================================================================
+# STEP 1.3: FORMULATE HYPOTHESES
+# ============================================================================
+"""
+WHAT IS A HYPOTHESIS?
+---------------------
+A specific, testable statement about what you expect to find.
+
+WHY FORMULATE HYPOTHESES?
+-------------------------
+1. Forces you to think BEFORE you analyze
+2. Prevents "fishing" for any pattern you can find
+3. Makes your analysis defensible ("I planned to test this")
+4. Separates exploration from confirmation
+
+THE STRUCTURE OF A HYPOTHESIS
+-----------------------------
+Every formal hypothesis has:
+
+  NULL HYPOTHESIS (H₀): 
+    The "nothing interesting" statement
+    What you assume is true unless proven otherwise
+    Usually: "no difference" or "no relationship"
+    
+  ALTERNATIVE HYPOTHESIS (H₁):
+    What you're trying to demonstrate
+    The "something interesting" statement
+    Usually: "there IS a difference" or "there IS a relationship"
+
+EXAMPLES:
+
+  Question: "Do defaulters have lower credit limits?"
+  
+  H₀: Mean credit limit of defaulters = Mean credit limit of non-defaulters
+  H₁: Mean credit limit of defaulters ≠ Mean credit limit of non-defaulters
+  
+  Test: Independent samples t-test
+  
+  ---
+  
+  Question: "Is payment delay associated with default?"
+  
+  H₀: Payment delay status and default are independent
+  H₁: Payment delay status and default are associated
+  
+  Test: Chi-square test of independence
+  
+  ---
+  
+  Question: "Is the default rate higher for males than females?"
+  
+  H₀: p_male = p_female (default rates are equal)
+  H₁: p_male ≠ p_female (default rates differ)
+  
+  Test: Two-proportion z-test
+
+HOW TO THINK ABOUT HYPOTHESES:
+------------------------------
+Turn each diagnostic question into a testable hypothesis:
+
+  Question                          → Hypothesis
+  ─────────────────────────────────────────────────────────────────
+  "Is X associated with Y?"         → H₀: X and Y are independent
+                                      H₁: X and Y are associated
+  
+  "Do groups differ on measure?"    → H₀: μ₁ = μ₂
+                                      H₁: μ₁ ≠ μ₂
+  
+  "Is rate higher for group A?"     → H₀: p_A = p_B
+                                      H₁: p_A > p_B (one-tailed)
+  
+  "Is there a correlation?"         → H₀: ρ = 0
+                                      H₁: ρ ≠ 0
+"""
+
+# ----------------------------------------------------------------------------
+# EXERCISE 1.3: Build Your Hypothesis Table
+# ----------------------------------------------------------------------------
+"""
+Create a table linking questions to formal hypotheses:
+
+┌─────┬────────────────────────┬──────────────────┬──────────────────┬──────────────┐
+│  #  │ Research Question      │ H₀ (Null)        │ H₁ (Alternative) │ Test         │
+├─────┼────────────────────────┼──────────────────┼──────────────────┼──────────────┤
+│  1  │                        │                  │                  │              │
+├─────┼────────────────────────┼──────────────────┼──────────────────┼──────────────┤
+│  2  │                        │                  │                  │              │
+├─────┼────────────────────────┼──────────────────┼──────────────────┼──────────────┤
+│  3  │                        │                  │                  │              │
+├─────┼────────────────────────┼──────────────────┼──────────────────┼──────────────┤
+│  4  │                        │                  │                  │              │
+├─────┼────────────────────────┼──────────────────┼──────────────────┼──────────────┤
+│  5  │                        │                  │                  │              │
+└─────┴────────────────────────┴──────────────────┴──────────────────┴──────────────┘
+
+EXAMPLE (filled in):
+
+┌─────┬────────────────────────┬──────────────────┬──────────────────┬──────────────┐
+│  #  │ Research Question      │ H₀ (Null)        │ H₁ (Alternative) │ Test         │
+├─────┼────────────────────────┼──────────────────┼──────────────────┼──────────────┤
+│  1  │ Is payment delay       │ Payment status & │ Payment status & │ Chi-square   │
+│     │ associated with        │ default are      │ default are      │ test         │
+│     │ default?               │ independent      │ associated       │              │
+├─────┼────────────────────────┼──────────────────┼──────────────────┼──────────────┤
+│  2  │ Do defaulters have     │ μ_default =      │ μ_default ≠      │ Independent  │
+│     │ lower credit limits?   │ μ_non-default    │ μ_non-default    │ t-test       │
+├─────┼────────────────────────┼──────────────────┼──────────────────┼──────────────┤
+│  3  │ Is default rate        │ p_male = p_fem   │ p_male ≠ p_fem   │ Two-prop     │
+│     │ different by sex?      │                  │                  │ z-test       │
+├─────┼────────────────────────┼──────────────────┼──────────────────┼──────────────┤
+│  4  │ Does education level   │ Independence     │ Association      │ Chi-square   │
+│     │ relate to default?     │                  │ exists           │ test         │
+├─────┼────────────────────────┼──────────────────┼──────────────────┼──────────────┤
+│  5  │ Is age correlated      │ ρ = 0            │ ρ ≠ 0            │ Pearson      │
+│     │ with credit limit?     │                  │                  │ correlation  │
+└─────┴────────────────────────┴──────────────────┴──────────────────┴──────────────┘
+
+HOW TO CHOOSE THE RIGHT TEST:
+
+  Comparing...                           Use...
+  ───────────────────────────────────────────────────────────────
+  Two categorical variables              Chi-square test
+  Proportions between groups             Two-proportion z-test
+  Means between 2 groups                 Independent t-test
+  Means between 3+ groups                ANOVA
+  Two continuous variables               Correlation (Pearson/Spearman)
+  Predicting binary outcome              Logistic regression
+  Predicting continuous outcome          Linear regression
+"""
+
+# ============================================================================
+# STEP 1.4: DEFINE SUCCESS CRITERIA
+# ============================================================================
+"""
+WHY DEFINE SUCCESS UPFRONT?
+---------------------------
+If you don't define success before analyzing, you'll rationalize 
+whatever you find as "good enough."
+
+BAD: "Our model is 78% accurate" 
+     → Is that good? Compared to what?
+
+GOOD: "Our model achieves 78% accuracy, exceeding our target of 75% 
+       and beating the baseline of 70%"
+     → Clear benchmark, clear success
+
+HOW TO THINK ABOUT SUCCESS:
+---------------------------
+For each type of question, define what "good" looks like:
+
+DESCRIPTIVE SUCCESS:
+  - All key metrics calculated
+  - Data quality issues identified and documented
+  - Clear picture of current state
+  
+DIAGNOSTIC SUCCESS:
+  - Key relationships identified
+  - Effect sizes calculated (not just p-values!)
+  - Top 3-5 predictive factors ranked
+  
+PREDICTIVE SUCCESS:
+  - Model performance exceeds baseline
+  - Model performance meets minimum threshold
+  - Model is interpretable and makes business sense
+  
+PRESCRIPTIVE SUCCESS:
+  - Recommendations are specific and actionable
+  - Expected impact is quantified
+  - Trade-offs are acknowledged
+
+METRICS FOR CREDIT RISK MODEL:
+
+┌─────────────────┬───────────┬───────────┬───────────┐
+│ Metric          │ Minimum   │ Target    │ Excellent │
+├─────────────────┼───────────┼───────────┼───────────┤
+│ AUC-ROC         │ 0.70      │ 0.75      │ 0.80+     │
+├─────────────────┼───────────┼───────────┼───────────┤
+│ Recall          │ 0.60      │ 0.70      │ 0.80+     │
+│ (catch defaults)│           │           │           │
+├─────────────────┼───────────┼───────────┼───────────┤
+│ Precision       │ 0.40      │ 0.50      │ 0.60+     │
+├─────────────────┼───────────┼───────────┼───────────┤
+│ Beats baseline? │ Must      │ By 10%+   │ By 20%+   │
+└─────────────────┴───────────┴───────────┴───────────┘
+
+WHAT IS THE BASELINE?
+--------------------
+The simplest possible approach. Your model must beat this.
+
+For classification with 78% non-default:
+  - Baseline accuracy: 78% (just predict majority class)
+  - Baseline AUC: 0.50 (random guessing)
+  
+For a useful model, you need:
+  - Better than majority class prediction
+  - AUC significantly above 0.50
+"""
+
+# ----------------------------------------------------------------------------
+# EXERCISE 1.4: Define Your Success Criteria
+# ----------------------------------------------------------------------------
+"""
+Fill in your success criteria:
+
+ANALYSIS COMPLETENESS:
+[ ] All variables explored and documented
+[ ] Data quality issues identified
+[ ] Target variable (default) fully understood
+[ ] At least ___ hypotheses formally tested
+[ ] Effect sizes calculated for all significant findings
+
+STATISTICAL RIGOR:
+[ ] Assumptions checked before every test
+[ ] Multiple testing correction applied if >___ tests
+[ ] Confidence intervals reported, not just p-values
+[ ] Results interpreted in practical terms, not just statistical
+
+MODEL PERFORMANCE:
+[ ] AUC-ROC minimum: ___
+[ ] AUC-ROC target: ___
+[ ] Recall minimum: ___
+[ ] Must beat baseline by: ___
+
+BUSINESS VALUE:
+[ ] At least ___ actionable recommendations
+[ ] Each recommendation has quantified expected impact
+[ ] Trade-offs are acknowledged
+[ ] Implementation is feasible
+
+DOCUMENTATION:
+[ ] Every decision is documented with reasoning
+[ ] Limitations are honestly stated
+[ ] Analysis is reproducible by someone else
+"""
+
+# ============================================================================
+# STEP 1.5: SCOPE AND CONSTRAINTS
+# ============================================================================
+"""
+WHAT ARE WE INCLUDING AND EXCLUDING?
+------------------------------------
+Being explicit about scope prevents scope creep and sets expectations.
+
+IN SCOPE:
+  ✓ Exploratory data analysis of all 23 predictors
+  ✓ Statistical testing of 5-8 hypotheses
+  ✓ Logistic regression model for default prediction
+  ✓ Model evaluation and interpretation
+  ✓ Business recommendations based on findings
+  
+OUT OF SCOPE (for now):
+  ✗ Real-time deployment of model
+  ✗ Advanced ML models (XGBoost, neural networks)
+  ✗ Causal inference (proving causation)
+  ✗ External data integration
+  ✗ Time series analysis (only 6 months of data)
+
+KNOWN CONSTRAINTS:
+  - Data is from 2005 Taiwan (may not generalize)
+  - No income data available
+  - Limited to credit card customers (not all loan types)
+  - Cross-sectional data (one snapshot, not longitudinal)
+
+KNOWN LIMITATIONS:
+  - Can't prove causation, only association
+  - Can't generalize to other markets without validation
+  - Definition of "default" may differ from other contexts
+  - 22% default rate is unusually high
+"""
+
+# ============================================================================
+# PHASE 1 DELIVERABLE: PROBLEM DEFINITION DOCUMENT
+# ============================================================================
+"""
+Compile your Phase 1 work into a formal document.
+
+TEMPLATE:
+
+═══════════════════════════════════════════════════════════════════════════════
+                        PROBLEM DEFINITION DOCUMENT
+                    Taiwan Credit Card Default Analysis
+═══════════════════════════════════════════════════════════════════════════════
+
+1. BUSINESS CONTEXT
+-------------------
+[Brief description of the problem and why it matters]
+
+The bank is experiencing elevated default rates on credit card accounts.
+Understanding who defaults, why they default, and how to predict default
+is critical for managing portfolio risk and improving lending decisions.
+
+
+2. STAKEHOLDERS
+---------------
+Primary: [Who and what they care about]
+Secondary: [Who else]
+Decision Maker: [Who will act]
+
+
+3. RESEARCH QUESTIONS
+---------------------
+Descriptive:
+  D1. [Question]
+  D2. [Question]
+  
+Diagnostic:
+  DG1. [Question]
+  DG2. [Question]
+  
+Predictive:
+  P1. [Question]
+  P2. [Question]
+  
+Prescriptive:
+  PS1. [Question]
+  PS2. [Question]
+
+
+4. HYPOTHESES
+-------------
+| # | Question | H₀ | H₁ | Test |
+|---|----------|----|----|------|
+| 1 | | | | |
+| 2 | | | | |
+| 3 | | | | |
+| 4 | | | | |
+| 5 | | | | |
+
+
+5. SUCCESS CRITERIA
+-------------------
+Model Performance:
+  - AUC-ROC ≥ [target]
+  - Recall ≥ [target]
+  - Beat baseline by [X]%
+
+Analysis Completeness:
+  - [criteria]
+
+Business Value:
+  - [criteria]
+
+
+6. SCOPE
+--------
+In Scope:
+  - [item]
+  - [item]
+  
+Out of Scope:
+  - [item]
+  - [item]
+
+Known Constraints:
+  - [constraint]
+  - [constraint]
+
+
+7. DATA OVERVIEW (preliminary)
+------------------------------
+Source: UCI ML Repository - Default of Credit Card Clients
+Records: 30,000 credit card customers
+Period: April - September 2005 (Taiwan)
+Target: Default payment next month (binary)
+Features: 23 predictor variables
+
+═══════════════════════════════════════════════════════════════════════════════
+"""
+
+# ============================================================================
+# YOUR ACTION ITEMS
+# ============================================================================
+"""
+PHASE 1 CHECKLIST:
+
+[ ] 1. Complete stakeholder mapping (Exercise 1.1)
+       - Identify primary, secondary, decision makers
+       - Document what each cares about
+
+[ ] 2. Write research questions (Step 1.2)
+       - At least 3-5 Descriptive questions
+       - At least 3-5 Diagnostic questions
+       - At least 2-3 Predictive questions
+       - At least 2-3 Prescriptive questions
+
+[ ] 3. Formulate hypotheses (Exercise 1.3)
+       - At least 5 formal hypotheses with H₀ and H₁
+       - Identify the statistical test for each
+
+[ ] 4. Define success criteria (Exercise 1.4)
+       - Set specific, measurable targets
+       - Define what baseline you must beat
+
+[ ] 5. Document scope and constraints (Step 1.5)
+       - What's in and out of scope
+       - Known limitations
+
+[ ] 6. Compile Problem Definition Document
+       - Use the template above
+       - This is your analysis "contract"
+
+WHEN YOU'RE DONE:
+Share your Problem Definition Document with me, and I'll give feedback
+before we move to Phase 2: Data Acquisition.
+"""

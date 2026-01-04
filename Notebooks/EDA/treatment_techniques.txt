@@ -1,0 +1,37 @@
+# Problem:
+1. The education has 3 missing categories, 0, 5, 6. Lets fix 3 of them.
+
+1.1:
+# The size of category 0 is small 14 ppl, 0.05%, so could be:
+- missing data coded as 0, 
+- data entry error
+- Legit but udocumented.
+
+1.1.1: Let us loot at their repayment behaviour
+:: -2: Did not use the card. Have enough money to spend, do not need bank money.
+:: -1: Paid On time, full amount.
+:: 0: Minimum payment.
+ We are here so to see if most of them are less than 1. If yes they have financial stability.
+
+
+
+1.2: About the edu_sample of 14 ppl
+- 0.05% of the sample
+- no defaults
+- The default rate of the sample is 22%, but here there is nothing. If we were to apply this, 22%, there should have been 3 ppl.
+- It has 2nd highest credit limit.
+- we can see that this group has highest % of payment status less than 1. 
+
+EDUCATION
+University          14030
+Graduate_school     10585
+High_school          4917
+Other_education       403
+Lower_eduction         51
+Wealthy_dropouts       14
+Name: count, dtype: int64
+
+
+
+
+

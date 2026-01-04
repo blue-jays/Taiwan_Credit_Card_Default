@@ -1,0 +1,199 @@
+# ============================================================================
+# .GITIGNORE
+# Taiwan Credit Card Default - Statistical Analysis Project
+# ============================================================================
+
+# -----------------------------------------------------------------------------
+# PYTHON
+# -----------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# -----------------------------------------------------------------------------
+# VIRTUAL ENVIRONMENTS
+# -----------------------------------------------------------------------------
+venv/
+env/
+ENV/
+.venv/
+.env/
+myenv/
+virtualenv/
+
+# -----------------------------------------------------------------------------
+# JUPYTER NOTEBOOKS
+# -----------------------------------------------------------------------------
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+
+# -----------------------------------------------------------------------------
+# DATA FILES (Don't commit large datasets)
+# -----------------------------------------------------------------------------
+*.csv
+*.xlsx
+*.xls
+*.parquet
+*.feather
+*.h5
+*.hdf5
+*.pkl
+*.pickle
+*.joblib
+data/
+datasets/
+raw_data/
+
+# Keep sample/small data if needed (uncomment below)
+# !data/sample_*.csv
+# !data/README.md
+
+# -----------------------------------------------------------------------------
+# OUTPUT FILES
+# -----------------------------------------------------------------------------
+*.png
+*.jpg
+*.jpeg
+*.pdf
+*.svg
+*.html
+*.docx
+outputs/
+results/
+figures/
+plots/
+reports/
+
+# Keep specific outputs if needed (uncomment below)
+# !outputs/README.md
+# !reports/final_report.pdf
+
+# -----------------------------------------------------------------------------
+# MODEL FILES
+# -----------------------------------------------------------------------------
+*.model
+*.h5
+*.hdf5
+*.pkl
+*.joblib
+*.sav
+models/
+saved_models/
+
+# -----------------------------------------------------------------------------
+# LOGS
+# -----------------------------------------------------------------------------
+*.log
+logs/
+*.out
+*.err
+
+# -----------------------------------------------------------------------------
+# IDE / EDITORS
+# -----------------------------------------------------------------------------
+# VSCode
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+
+# Spyder
+.spyderproject
+.spyproject
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+
+# -----------------------------------------------------------------------------
+# OS GENERATED
+# -----------------------------------------------------------------------------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+
+# -----------------------------------------------------------------------------
+# ENVIRONMENT & SECRETS
+# -----------------------------------------------------------------------------
+.env
+.env.local
+.env.*.local
+*.env
+secrets.yaml
+secrets.json
+config.local.yaml
+credentials.json
+
+# API keys
+*.key
+*.pem
+
+# -----------------------------------------------------------------------------
+# MISC
+# -----------------------------------------------------------------------------
+*.bak
+*.tmp
+*.temp
+.cache/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# -----------------------------------------------------------------------------
+# PROJECT SPECIFIC
+# -----------------------------------------------------------------------------
+# UCI dataset cache
+ucimlrepo_cache/
+
+# Kaggle
+kaggle.json
+.kaggle/
+
